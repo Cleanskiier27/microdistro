@@ -6,8 +6,9 @@ Minimal starter repository for a network utility that can be implemented in eith
 
 1. `networkbuster.py` is the primary entrypoint and provides network diagnostics.
 2. `networkbuster.ps1` now matches the Python feature set for day-to-day diagnostics.
-3. `.github/workflows/ci.yml` validates both entrypoints.
-4. `.github/dependabot.yml` keeps Python and GitHub Actions dependencies up to date.
+3. `tests/` validates both entrypoints.
+4. `.github/workflows/ci.yml` runs the automated checks.
+5. `.github/dependabot.yml` keeps Python and GitHub Actions dependencies up to date.
 
 ## Python
 
@@ -62,6 +63,20 @@ What it does:
 - attempts reverse DNS lookups
 - optionally pings the target
 - checks selected TCP ports
+
+## Tests
+
+Run Python tests:
+
+```bash
+python -m unittest discover -s tests -p "test_*.py" -v
+```
+
+Run PowerShell tests:
+
+```powershell
+./tests/test_networkbuster.ps1
+```
 
 ## Notes
 
