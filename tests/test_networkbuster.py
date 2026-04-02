@@ -17,11 +17,24 @@ class ParsePortsTest(unittest.TestCase):
 
 
 class ArtTest(unittest.TestCase):
-    def test_render_neural_led_art_contains_banner_title(self):
+    def test_render_neural_led_art_defaults_to_idle(self):
         art = networkbuster.render_neural_led_art()
 
-        self.assertIn("NEURAL LED GRID", art)
-        self.assertIn("oO0OOO0Oo", art)
+        self.assertIn("NEURAL LED GRID :: IDLE", art)
+
+    def test_render_neural_led_art_uses_active_state_for_open_ports(self):
+        art = networkbuster.render_neural_led_art(
+            {"ping": "ok", "port_scan": [{"port": 443, "status": "open"}]}
+        )
+
+        self.assertIn("NEURAL LED GRID :: ACTIVE", art)
+
+    def test_render_neural_led_art_uses_alert_state_for_failed_ping(self):
+        art = networkbuster.render_neural_led_art(
+            {"ping": "failed", "port_scan": []}
+        )
+
+        self.assertIn("NEURAL LED GRID :: ALERT", art)
 
 
 class BuildReportTest(unittest.TestCase):
@@ -77,22 +90,22 @@ class MainTest(unittest.TestCase):
         self.assertEqual(payload["ping"], "skipped")
 
     @patch("networkbuster.build_report")
-    def test_main_text_output_includes_art(self, mock_build_report):
+    def test_main_text_output_uses_active_art_for_open_ports(self, mock_build_report):
         mock_build_report.return_value = {
             "host": "localhost",
             "addresses": [{"family": "ipv4", "address": "127.0.0.1", "reverse_dns": "localhost"}],
-            "ping": "skipped",
-            "port_scan": [],
+            "ping": "ok",
+            "port_scan": [{"port": 443, "status": "open"}],
         }
 
         stdout = io.StringIO()
-        with patch("sys.argv", ["networkbuster.py", "--host", "localhost", "--skip-ping", "--skip-port-scan"]):
+        with patch("sys.argv", ["networkbuster.py", "--host", "localhost", "--skip-ping"]):
             with redirect_stdout(stdout):
                 exit_code = networkbuster.main()
 
         self.assertEqual(exit_code, 0)
         output = stdout.getvalue()
-        self.assertIn("NEURAL LED GRID", output)
+        self.assertIn("NEURAL LED GRID :: ACTIVE", output)
         self.assertIn("host: localhost", output)
 
     def test_main_rejects_invalid_ports(self):

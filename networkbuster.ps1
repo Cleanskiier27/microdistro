@@ -11,9 +11,35 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Get-LedState {
+    param(
+        [string]$PingStatus,
+        [object[]]$PortResults
+    )
+
+    if ($PingStatus.StartsWith("failed") -or $PingStatus.StartsWith("unavailable")) {
+        return "alert"
+    }
+
+    if ($PortResults | Where-Object { $_.status -eq "open" }) {
+        return "active"
+    }
+
+    return "idle"
+}
+
 function Get-NeuralLedArt {
-    return @"
-NEURAL LED GRID
+    param(
+        [string]$PingStatus,
+        [object[]]$PortResults
+    )
+
+    $state = Get-LedState -PingStatus $PingStatus -PortResults $PortResults
+
+    switch ($state) {
+        "active" {
+            return @"
+NEURAL LED GRID :: ACTIVE
 [*]  .oO0OOO0Oo.   [*]
  |  o0O..:::..O0o  |
  | 0O:::/|\\:::\\O0 |
@@ -22,6 +48,28 @@ NEURAL LED GRID
  |  o0O..:::..O0o  |
 [*]  `oO0OOO0Oo'   [*]
 "@
+        }
+        "alert" {
+            return @"
+NEURAL LED GRID :: ALERT
+[!]   xX#=====#Xx   [!]
+ |   ##::!!!::##   |
+ |   #!:/###\\:!#   |
+ |   ##::!!!::##   |
+[!]   `xX#===#Xx'   [!]
+"@
+        }
+        default {
+            return @"
+NEURAL LED GRID :: IDLE
+[.]   .o..o..o.    [.]
+ |   ..::---::..   |
+ |   ::::...::::   |
+ |   ..::---::..   |
+[.]   `o..o..o.'   [.]
+"@
+        }
+    }
 }
 
 function Get-PortList {
@@ -156,7 +204,7 @@ if ($Json) {
     exit 0
 }
 
-Write-Output (Get-NeuralLedArt)
+Write-Output (Get-NeuralLedArt -PingStatus $report.ping -PortResults $report.port_scan)
 Write-Output "host: $($report.host)"
 Write-Output "addresses:"
 foreach ($entry in $report.addresses) {

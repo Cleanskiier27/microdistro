@@ -8,15 +8,42 @@ import sys
 from typing import Any
 
 
-def render_neural_led_art() -> str:
-    return """NEURAL LED GRID
+LED_PATTERNS = {
+    "idle": """NEURAL LED GRID :: IDLE
+[.]   .o..o..o.    [.] 
+ |   ..::---::..   | 
+ |   ::::...::::   | 
+ |   ..::---::..   | 
+[.]   `o..o..o.'   [.]""",
+    "active": """NEURAL LED GRID :: ACTIVE
 [*]  .oO0OOO0Oo.   [*]
  |  o0O..:::..O0o  |
  | 0O:::/|\\:::\\O0 |
  | O:::/_+_\\:::O |
  | 0O:::\\|//:::O0 |
  |  o0O..:::..O0o  |
-[*]  `oO0OOO0Oo'   [*]"""
+[*]  `oO0OOO0Oo'   [*]""",
+    "alert": """NEURAL LED GRID :: ALERT
+[!]   xX#=====#Xx   [!]
+ |   ##::!!!::##   | 
+ |   #!:/###\\:!#   | 
+ |   ##::!!!::##   | 
+[!]   `xX#===#Xx'   [!]""",
+}
+
+
+def determine_led_state(report: dict[str, Any]) -> str:
+    if report["ping"].startswith("failed") or report["ping"].startswith("unavailable"):
+        return "alert"
+    if any(result["status"] == "open" for result in report["port_scan"]):
+        return "active"
+    return "idle"
+
+
+def render_neural_led_art(report: dict[str, Any] | None = None) -> str:
+    if report is None:
+        return LED_PATTERNS["idle"]
+    return LED_PATTERNS[determine_led_state(report)]
 
 
 def parse_ports(raw_ports: str) -> list[int]:
@@ -122,7 +149,7 @@ def build_report(host: str, count: int, skip_ping: bool, ports: list[int], timeo
 
 
 def print_report(report: dict[str, Any]) -> None:
-    print(render_neural_led_art())
+    print(render_neural_led_art(report))
     print(f"host: {report['host']}")
     print("addresses:")
     for entry in report["addresses"]:

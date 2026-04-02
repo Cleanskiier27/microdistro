@@ -4,8 +4,8 @@ Minimal starter repository for a network utility that can be implemented in eith
 
 ## Order
 
-1. `networkbuster.py` is the primary entrypoint and provides network diagnostics plus a neural LED terminal banner.
-2. `networkbuster.ps1` matches the Python feature set and renders the same neural LED art in text mode.
+1. `networkbuster.py` is the primary entrypoint and provides network diagnostics plus a reactive neural LED terminal banner.
+2. `networkbuster.ps1` matches the Python feature set and shifts the banner between `IDLE`, `ACTIVE`, and `ALERT` states.
 3. `tests/` validates both entrypoints.
 4. `.github/workflows/ci.yml` runs the automated checks.
 5. `.github/dependabot.yml` keeps Python and GitHub Actions dependencies up to date.
@@ -30,9 +30,15 @@ Emit JSON:
 python networkbuster.py --host example.com --json --skip-ping
 ```
 
+Banner behavior in text mode:
+
+- `IDLE` when the tool is only reporting neutral results
+- `ACTIVE` when at least one probed TCP port is open
+- `ALERT` when ping fails or becomes unavailable
+
 What it does:
 
-- renders a neural LED banner in text mode
+- renders a reactive neural LED banner in text mode
 - resolves IPv4 and IPv6 addresses
 - attempts reverse DNS lookups
 - optionally pings the target
@@ -60,7 +66,7 @@ Emit JSON:
 
 What it does:
 
-- renders a neural LED banner in text mode
+- renders the same reactive neural LED banner in text mode
 - resolves IPv4 and IPv6 addresses
 - attempts reverse DNS lookups
 - optionally pings the target
