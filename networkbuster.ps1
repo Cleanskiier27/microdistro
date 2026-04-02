@@ -11,6 +11,19 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Get-NeuralLedArt {
+    return @"
+NEURAL LED GRID
+[*]  .oO0OOO0Oo.   [*]
+ |  o0O..:::..O0o  |
+ | 0O:::/|\\:::\\O0 |
+ | O:::/_+_\\:::O |
+ | 0O:::\\|//:::O0 |
+ |  o0O..:::..O0o  |
+[*]  `oO0OOO0Oo'   [*]
+"@
+}
+
 function Get-PortList {
     param([string]$RawPorts)
 
@@ -143,6 +156,7 @@ if ($Json) {
     exit 0
 }
 
+Write-Output (Get-NeuralLedArt)
 Write-Output "host: $($report.host)"
 Write-Output "addresses:"
 foreach ($entry in $report.addresses) {

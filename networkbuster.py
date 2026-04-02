@@ -8,6 +8,17 @@ import sys
 from typing import Any
 
 
+def render_neural_led_art() -> str:
+    return """NEURAL LED GRID
+[*]  .oO0OOO0Oo.   [*]
+ |  o0O..:::..O0o  |
+ | 0O:::/|\\:::\\O0 |
+ | O:::/_+_\\:::O |
+ | 0O:::\\|//:::O0 |
+ |  o0O..:::..O0o  |
+[*]  `oO0OOO0Oo'   [*]"""
+
+
 def parse_ports(raw_ports: str) -> list[int]:
     ports: list[int] = []
     for chunk in raw_ports.split(","):
@@ -111,6 +122,7 @@ def build_report(host: str, count: int, skip_ping: bool, ports: list[int], timeo
 
 
 def print_report(report: dict[str, Any]) -> None:
+    print(render_neural_led_art())
     print(f"host: {report['host']}")
     print("addresses:")
     for entry in report["addresses"]:

@@ -13,6 +13,7 @@ function Assert-True {
 
 $textOutput = & ./networkbuster.ps1 -Target localhost -SkipPing -SkipPortScan
 Assert-True ($LASTEXITCODE -eq 0) "Expected text diagnostics to succeed"
+Assert-True (($textOutput -join "`n") -match "NEURAL LED GRID") "Expected neural LED banner in text output"
 Assert-True (($textOutput -join "`n") -match "host: localhost") "Expected host line in text output"
 Assert-True (($textOutput -join "`n") -match "ports: skipped") "Expected skipped ports in text output"
 

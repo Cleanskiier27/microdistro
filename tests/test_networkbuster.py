@@ -16,6 +16,14 @@ class ParsePortsTest(unittest.TestCase):
             networkbuster.parse_ports("0,80")
 
 
+class ArtTest(unittest.TestCase):
+    def test_render_neural_led_art_contains_banner_title(self):
+        art = networkbuster.render_neural_led_art()
+
+        self.assertIn("NEURAL LED GRID", art)
+        self.assertIn("oO0OOO0Oo", art)
+
+
 class BuildReportTest(unittest.TestCase):
     @patch("networkbuster.scan_ports")
     @patch("networkbuster.ping_host")
@@ -67,6 +75,25 @@ class MainTest(unittest.TestCase):
         payload = json.loads(stdout.getvalue())
         self.assertEqual(payload["host"], "localhost")
         self.assertEqual(payload["ping"], "skipped")
+
+    @patch("networkbuster.build_report")
+    def test_main_text_output_includes_art(self, mock_build_report):
+        mock_build_report.return_value = {
+            "host": "localhost",
+            "addresses": [{"family": "ipv4", "address": "127.0.0.1", "reverse_dns": "localhost"}],
+            "ping": "skipped",
+            "port_scan": [],
+        }
+
+        stdout = io.StringIO()
+        with patch("sys.argv", ["networkbuster.py", "--host", "localhost", "--skip-ping", "--skip-port-scan"]):
+            with redirect_stdout(stdout):
+                exit_code = networkbuster.main()
+
+        self.assertEqual(exit_code, 0)
+        output = stdout.getvalue()
+        self.assertIn("NEURAL LED GRID", output)
+        self.assertIn("host: localhost", output)
 
     def test_main_rejects_invalid_ports(self):
         stdout = io.StringIO()
