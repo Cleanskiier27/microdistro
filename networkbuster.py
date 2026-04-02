@@ -8,12 +8,20 @@ import sys
 from typing import Any
 
 
+ANSI_RESET = "\033[0m"
+ANSI_COLORS = {
+    "idle": "\033[36m",
+    "active": "\033[32m",
+    "alert": "\033[31m",
+    "resolve": "\033[33m",
+}
+
 LED_PATTERNS = {
     "idle": """NEURAL LED GRID :: IDLE
-[.]   .o..o..o.    [.] 
- |   ..::---::..   | 
- |   ::::...::::   | 
- |   ..::---::..   | 
+[.]   .o..o..o.    [.]
+ |   ..::---::..   |
+ |   ::::...::::   |
+ |   ..::---::..   |
 [.]   `o..o..o.'   [.]""",
     "active": """NEURAL LED GRID :: ACTIVE
 [*]  .oO0OOO0Oo.   [*]
@@ -25,25 +33,17 @@ LED_PATTERNS = {
 [*]  `oO0OOO0Oo'   [*]""",
     "alert": """NEURAL LED GRID :: ALERT
 [!]   xX#=====#Xx   [!]
- |   ##::!!!::##   | 
- |   #!:/###\\:!#   | 
- |   ##::!!!::##   | 
+ |   ##::!!!::##   |
+ |   #!:/###\\:!#   |
+ |   ##::!!!::##   |
 [!]   `xX#===#Xx'   [!]""",
+    "resolve": """NEURAL LED GRID :: RESOLVE
+[?]   .-==???==-..  [?]
+ |   :: dns flux :: |
+ |   :/ unresolved\: |
+ |   :: retry path :: |
+[?]   `-==???==-.'  [?]""",
 }
-
-
-def determine_led_state(report: dict[str, Any]) -> str:
-    if report["ping"].startswith("failed") or report["ping"].startswith("unavailable"):
-        return "alert"
-    if any(result["status"] == "open" for result in report["port_scan"]):
-        return "active"
-    return "idle"
-
-
-def render_neural_led_art(report: dict[str, Any] | None = None) -> str:
-    if report is None:
-        return LED_PATTERNS["idle"]
-    return LED_PATTERNS[determine_led_state(report)]
 
 
 def parse_ports(raw_ports: str) -> list[int]:
@@ -119,6 +119,44 @@ def scan_ports(host: str, ports: list[int], timeout: float) -> list[dict[str, An
     return results
 
 
+def summarize_report(report: dict[str, Any]) -> dict[str, int]:
+    open_ports = sum(1 for result in report["port_scan"] if result["status"] == "open")
+    closed_ports = sum(1 for result in report["port_scan"] if result["status"] == "closed")
+    return {
+        "resolved_addresses": len(report["addresses"]),
+        "open_ports": open_ports,
+        "closed_ports": closed_ports,
+    }
+
+
+def determine_led_state(report: dict[str, Any]) -> str:
+    if report.get("resolution_error"):
+        return "resolve"
+    if report["ping"].startswith("failed") or report["ping"].startswith("unavailable"):
+        return "alert"
+    if any(result["status"] == "open" for result in report["port_scan"]):
+        return "active"
+    return "idle"
+
+
+def finalize_report(report: dict[str, Any]) -> dict[str, Any]:
+    report["summary"] = summarize_report(report)
+    report["led_state"] = determine_led_state(report)
+    return report
+
+
+def create_resolution_error_report(host: str, error_message: str) -> dict[str, Any]:
+    return finalize_report(
+        {
+            "host": host,
+            "addresses": [],
+            "ping": "skipped",
+            "port_scan": [],
+            "resolution_error": error_message,
+        }
+    )
+
+
 def build_report(host: str, count: int, skip_ping: bool, ports: list[int], timeout: float, skip_port_scan: bool) -> dict[str, Any]:
     addresses = resolve_host(host)
     report: dict[str, Any] = {
@@ -126,6 +164,7 @@ def build_report(host: str, count: int, skip_ping: bool, ports: list[int], timeo
         "addresses": [],
         "ping": "skipped",
         "port_scan": [],
+        "resolution_error": None,
     }
 
     for entry in addresses:
@@ -145,12 +184,52 @@ def build_report(host: str, count: int, skip_ping: bool, ports: list[int], timeo
     if not skip_port_scan:
         report["port_scan"] = scan_ports(host, ports, timeout)
 
-    return report
+    return finalize_report(report)
+
+
+def build_led_summary(report: dict[str, Any]) -> str:
+    summary = report["summary"]
+    if report.get("resolution_error"):
+        return (
+            f"STATE {report['led_state'].upper()} | addrs {summary['resolved_addresses']} | "
+            f"open {summary['open_ports']} | dns {report['resolution_error']}"
+        )
+    return (
+        f"STATE {report['led_state'].upper()} | addrs {summary['resolved_addresses']} | "
+        f"open {summary['open_ports']} | ping {report['ping']}"
+    )
+
+
+def render_neural_led_art(report: dict[str, Any] | None = None, use_color: bool = True) -> str:
+    if report is None:
+        report = finalize_report(
+            {
+                "host": "unknown",
+                "addresses": [],
+                "ping": "skipped",
+                "port_scan": [],
+                "resolution_error": None,
+            }
+        )
+
+    state = report["led_state"]
+    banner = f"{LED_PATTERNS[state]}\n{build_led_summary(report)}"
+    if not use_color:
+        return banner
+    return f"{ANSI_COLORS[state]}{banner}{ANSI_RESET}"
 
 
 def print_report(report: dict[str, Any]) -> None:
     print(render_neural_led_art(report))
     print(f"host: {report['host']}")
+
+    if report.get("resolution_error"):
+        print(f"dns: {report['resolution_error']}")
+        print("addresses: unavailable")
+        print("ping: skipped")
+        print("ports: skipped")
+        return
+
     print("addresses:")
     for entry in report["addresses"]:
         reverse_dns = entry["reverse_dns"] or "unavailable"
@@ -184,7 +263,11 @@ def main() -> int:
         print(f"invalid input: {error}", file=sys.stderr)
         return 2
     except socket.gaierror as error:
-        print(f"DNS resolution failed for {args.host}: {error}", file=sys.stderr)
+        report = create_resolution_error_report(args.host, str(error))
+        if args.json:
+            print(json.dumps(report, indent=2))
+        else:
+            print_report(report)
         return 1
 
     if args.json:

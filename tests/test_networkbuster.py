@@ -21,20 +21,33 @@ class ArtTest(unittest.TestCase):
         art = networkbuster.render_neural_led_art()
 
         self.assertIn("NEURAL LED GRID :: IDLE", art)
+        self.assertIn("STATE IDLE", art)
+        self.assertIn("\u001b[36m", art)
 
     def test_render_neural_led_art_uses_active_state_for_open_ports(self):
         art = networkbuster.render_neural_led_art(
-            {"ping": "ok", "port_scan": [{"port": 443, "status": "open"}]}
+            {
+                "host": "localhost",
+                "addresses": [{"family": "ipv4", "address": "127.0.0.1", "reverse_dns": "localhost"}],
+                "ping": "ok",
+                "port_scan": [{"port": 443, "status": "open"}],
+                "resolution_error": None,
+                "summary": {"resolved_addresses": 1, "open_ports": 1, "closed_ports": 0},
+                "led_state": "active",
+            }
         )
 
         self.assertIn("NEURAL LED GRID :: ACTIVE", art)
+        self.assertIn("STATE ACTIVE", art)
+        self.assertIn("\u001b[32m", art)
 
-    def test_render_neural_led_art_uses_alert_state_for_failed_ping(self):
-        art = networkbuster.render_neural_led_art(
-            {"ping": "failed", "port_scan": []}
-        )
+    def test_render_neural_led_art_uses_resolve_state_for_dns_issues(self):
+        report = networkbuster.create_resolution_error_report("bad-host", "name or service not known")
+        art = networkbuster.render_neural_led_art(report)
 
-        self.assertIn("NEURAL LED GRID :: ALERT", art)
+        self.assertIn("NEURAL LED GRID :: RESOLVE", art)
+        self.assertIn("STATE RESOLVE", art)
+        self.assertIn("name or service not known", art)
 
 
 class BuildReportTest(unittest.TestCase):
@@ -58,6 +71,8 @@ class BuildReportTest(unittest.TestCase):
         self.assertEqual(report["port_scan"], [{"port": 80, "status": "open"}])
         self.assertEqual(report["addresses"][0]["reverse_dns"], "localhost")
         self.assertEqual(report["addresses"][1]["family"], "ipv6")
+        self.assertEqual(report["summary"]["open_ports"], 1)
+        self.assertEqual(report["led_state"], "active")
 
     @patch("networkbuster.resolve_host")
     def test_build_report_skips_ping_and_port_scan(self, mock_resolve):
@@ -67,6 +82,7 @@ class BuildReportTest(unittest.TestCase):
 
         self.assertEqual(report["ping"], "skipped")
         self.assertEqual(report["port_scan"], [])
+        self.assertEqual(report["led_state"], "idle")
 
 
 class MainTest(unittest.TestCase):
@@ -77,6 +93,9 @@ class MainTest(unittest.TestCase):
             "addresses": [{"family": "ipv4", "address": "127.0.0.1", "reverse_dns": "localhost"}],
             "ping": "skipped",
             "port_scan": [],
+            "resolution_error": None,
+            "summary": {"resolved_addresses": 1, "open_ports": 0, "closed_ports": 0},
+            "led_state": "idle",
         }
 
         stdout = io.StringIO()
@@ -88,6 +107,7 @@ class MainTest(unittest.TestCase):
         payload = json.loads(stdout.getvalue())
         self.assertEqual(payload["host"], "localhost")
         self.assertEqual(payload["ping"], "skipped")
+        self.assertEqual(payload["led_state"], "idle")
 
     @patch("networkbuster.build_report")
     def test_main_text_output_uses_active_art_for_open_ports(self, mock_build_report):
@@ -96,6 +116,9 @@ class MainTest(unittest.TestCase):
             "addresses": [{"family": "ipv4", "address": "127.0.0.1", "reverse_dns": "localhost"}],
             "ping": "ok",
             "port_scan": [{"port": 443, "status": "open"}],
+            "resolution_error": None,
+            "summary": {"resolved_addresses": 1, "open_ports": 1, "closed_ports": 0},
+            "led_state": "active",
         }
 
         stdout = io.StringIO()
@@ -106,7 +129,20 @@ class MainTest(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         output = stdout.getvalue()
         self.assertIn("NEURAL LED GRID :: ACTIVE", output)
-        self.assertIn("host: localhost", output)
+        self.assertIn("STATE ACTIVE | addrs 1 | open 1 | ping ok", output)
+        self.assertIn("\u001b[32m", output)
+
+    @patch("networkbuster.build_report", side_effect=socket.gaierror("lookup failed"))
+    def test_main_dns_resolution_error_uses_resolve_banner(self, _mock_build_report):
+        stdout = io.StringIO()
+        with patch("sys.argv", ["networkbuster.py", "--host", "bad-host"]):
+            with redirect_stdout(stdout):
+                exit_code = networkbuster.main()
+
+        self.assertEqual(exit_code, 1)
+        output = stdout.getvalue()
+        self.assertIn("NEURAL LED GRID :: RESOLVE", output)
+        self.assertIn("dns: lookup failed", output)
 
     def test_main_rejects_invalid_ports(self):
         stdout = io.StringIO()
