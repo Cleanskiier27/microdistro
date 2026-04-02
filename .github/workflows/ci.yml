@@ -24,6 +24,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run PowerShell starter
+      - name: Run PowerShell text diagnostics
         shell: pwsh
-        run: ./networkbuster.ps1 -Host localhost -SkipPing
+        run: ./networkbuster.ps1 -Target localhost -SkipPing -SkipPortScan
+      - name: Run PowerShell JSON diagnostics
+        shell: pwsh
+        run: ./networkbuster.ps1 -Target localhost -Json -SkipPing -SkipPortScan
