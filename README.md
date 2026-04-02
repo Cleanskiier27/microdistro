@@ -4,18 +4,37 @@ Minimal starter repository for a network utility that can be implemented in eith
 
 ## Order
 
-1. `networkbuster.py` is the primary starter entrypoint.
+1. `networkbuster.py` is the primary entrypoint and now provides real network diagnostics.
 2. `networkbuster.ps1` is the PowerShell alternative.
 3. `.github/workflows/ci.yml` validates both entrypoints.
 4. `.github/dependabot.yml` keeps Python and GitHub Actions dependencies up to date.
 
 ## Python
 
-Run:
+Run a basic DNS-only check:
 
 ```bash
-python networkbuster.py --host example.com
+python networkbuster.py --host example.com --skip-ping --skip-port-scan
 ```
+
+Run diagnostics with TCP probes:
+
+```bash
+python networkbuster.py --host example.com --ports 22,80,443
+```
+
+Emit JSON:
+
+```bash
+python networkbuster.py --host example.com --json --skip-ping
+```
+
+What it does:
+
+- resolves IPv4 and IPv6 addresses
+- attempts reverse DNS lookups
+- optionally pings the target
+- checks selected TCP ports
 
 ## PowerShell
 
@@ -27,6 +46,6 @@ Run:
 
 ## Notes
 
-- The Python starter uses only the standard library.
-- The PowerShell starter resolves DNS and optionally performs a ping test.
-- Add Python dependencies to `pyproject.toml` when the project grows.
+- The Python tool still uses only the standard library.
+- Dependabot will start tracking Python dependencies once they are added to `pyproject.toml`.
+- The PowerShell script remains a lightweight alternative and can be expanded separately.

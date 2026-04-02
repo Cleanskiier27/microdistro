@@ -15,8 +15,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Run Python starter
-        run: python networkbuster.py --host localhost --skip-ping
+      - name: Run Python text diagnostics
+        run: python networkbuster.py --host localhost --skip-ping --skip-port-scan
+      - name: Run Python JSON diagnostics
+        run: python networkbuster.py --host localhost --json --skip-ping --skip-port-scan
 
   powershell:
     runs-on: windows-latest
