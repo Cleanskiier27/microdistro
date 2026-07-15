@@ -2,7 +2,7 @@
 
 Minimal starter repository for a network utility that can be implemented in either Python or PowerShell.
 
-> Part of the **Preciseliens Networkbuster Division**, owned by Andrew Middlston.
+> Part of the **Preciseliens Networkbuster Division**, owned by Andrew Middleton.
 
 ## Order
 
