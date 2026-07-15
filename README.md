@@ -2,6 +2,8 @@
 
 Minimal starter repository for a network utility that can be implemented in either Python or PowerShell.
 
+> Part of the **Preciseliens Networkbuster Division**, owned by Andrew Middlston.
+
 ## Order
 
 1. `networkbuster.py` is the primary entrypoint and provides network diagnostics plus a reactive neural LED terminal banner.
